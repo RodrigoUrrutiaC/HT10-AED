@@ -5,10 +5,12 @@
 from neo4jrestclient.client import GraphDatabase
 from neo4jrestclient import client
 
+# LA CONTRASENA ES 12345
 gdb = GraphDatabase("http://localhost:7474/", username="neo4j", password="12345")
 doctores = gdb.labels.create("Doctores")
 pacientes = gdb.labels.create("Pacientes")
 medicinas = gdb.labels.create("Medicinas")
+# Sea definen los labels de los tres tipos de nodos
 
 #Menu
 opcion = 0
@@ -17,6 +19,9 @@ while opcion != "8":
     opcion = input("Ingresar numero de opcion\n")
 
     if(opcion == "1"):
+        #Simplemente se ingresa la informacion del doctor
+        #Se utilizara el codigo de Colegiado como fundamental para
+        #identificar a los doctores
         nombre = input("Nombre: \n")
         colegiado = input("Colegiado: \n")
         especialidad = input("Especialidad: \n")
@@ -26,6 +31,8 @@ while opcion != "8":
         print("Se ha ingresado un nuevo doctor\n")
 
     if(opcion == "2"):
+        #Se ingresa la informacion de los pacientes
+        #El telefono sera fundamental para identificar a los pacientes
         nombre = input("Nombre: \n")
         telefono = input("Telefono: \n")
         paciente = gdb.nodes.create(Nombre = nombre, Telefono = telefono)
@@ -33,19 +40,20 @@ while opcion != "8":
         print("Se ha ingresado un nuevo paciente\n")
 
     if(opcion == "3"):
+        #Paciente visita a doctor
         colegiado1 = input("Numero de colegiado del doctor: \n")
         telefono2 = input("Nombre de telefono del paciente: \n")
         q1 = 'MATCH (d:Doctores) WHERE d.Colegiado="'+colegiado1+'" RETURN d'
         q1Node = gdb.query(q1, returns = (client.Node))
         q2 = 'MATCH (p:Pacientes) WHERE p.Telefono="'+telefono2+'" RETURN p'
         q2Node = gdb.query(q2, returns = (client.Node))
-        #print(type(q2Node))
+        #Si se reunen, se van a conocer
         for r in q1Node:
             for i in q2Node:
-                #print(type(r[0]))
                 r[0].relationships.create("conoce", i[0])
                 i[0].relationships.create("conoce", r[0])
 
+        #Se ingresan los datos de la medicina y la prescripcion
         nombre = input("Nombre de la medicina: \n")
         desdeFecha = input("Tomar desde (Fecha): \n")
         hastaFecha = input("Tomar hasta (Fecha): \n")
@@ -53,12 +61,14 @@ while opcion != "8":
         medicina = gdb.nodes.create(Nombre = nombre, DesdeFecha = desdeFecha, HastaFecha = hastaFecha, Dosis = dosis)
         medicinas.add(medicina)
         print("Se ha ingresado una prescripcion\n")
+        # el doctor prescribe medicina y el paciente la toma
         for r in q1Node:
             r[0].relationships.create("prescribes", medicina)
         for i in q2Node:
             i[0].relationships.create("takes", medicina)
 
     if(opcion == "4"):
+        #Se busca la especialidad de tal doctor utilizando query
         espe = input("Especialidad a buscar: \n")
         q =  'MATCH (d:Doctores) WHERE d.Especialidad="'+espe+'" RETURN d'
         qNode = gdb.query(q, returns=(client.Node))
@@ -77,6 +87,9 @@ while opcion != "8":
         q3Node = gdb.query(q3, returns = (client.Node))
         q4 = 'MATCH (p:Pacientes) WHERE p.Telefono="'+num2+'" RETURN p'
         q4Node = gdb.query(q4, returns = (client.Node))
+
+        #Los nodos anteriores y los siguientes ifs muestran todos los
+        #posibles casos para que se conozcan doctores y pacientes
 
         if len(q1Node)==0:
             if len(q3Node)==0:
@@ -110,6 +123,8 @@ while opcion != "8":
         telefono1 = input("Ingrese el telefono del paciente que busca la recomendacion: \n")
         espe = input("Especialidad a buscar: \n")
 
+        #Se busca el doctor de un conocido con especialidad en tal
+
         q1= 'MATCH(p:Pacientes {Telefono:"'+telefono1+'"})-[:conoce]->(c:Pacientes)-[:conoce]->(d:Doctores) WHERE d.Especialidad="'+espe+'" RETURN d'
         q1Node = gdb.query(q1, returns = (client.Node))
 
@@ -117,6 +132,7 @@ while opcion != "8":
             for r in q1Node:
                 print(("Doctor de un conocido recomendado - Nombre: %s " % (r[0]["Nombre"])) + "| " + ("Colegiado: %s" % (r[0]["Colegiado"])) + "| " + ("Telefono: %s" % (r[0]["Telefono"])))
 
+        #Se busca el doctor del conocido de un conocido con especialidad tal
         q2 = 'MATCH(p:Pacientes {Telefono:"'+telefono1+'"})-[:conoce]->(c:Pacientes)-[:conoce]->(e:Pacientes)-[:conoce]->(d:Doctores) WHERE d.Especialidad="'+espe+'" RETURN d'
         q2Node = gdb.query(q2, returns = (client.Node))
         
@@ -129,6 +145,7 @@ while opcion != "8":
         colegiado1 = input("Ingrese el numero de colegiado del doctor que quiere recomendar a su paciente: \n")
         espe = input("Especialidad a buscar: \n")
 
+        #Un doctor recomienda a un colega con tal expecialidad
         q1= 'MATCH(p:Doctores {Colegiado:"'+colegiado1+'"})-[:conoce]->(d:Doctores) WHERE d.Especialidad="'+espe+'" RETURN d'
         q1Node = gdb.query(q1, returns = (client.Node))
 
@@ -136,6 +153,7 @@ while opcion != "8":
             for r in q1Node:
                 print(("Doctor conocido recomendado - Nombre: %s " % (r[0]["Nombre"])) + "| " + ("Colegiado: %s" % (r[0]["Colegiado"])) + "| " + ("Telefono: %s" % (r[0]["Telefono"])))
 
+        #Un doctor recomienda al conocido de un colega con tal especialidad
         q2 = 'MATCH(p:Doctores {Colegiado:"'+colegiado1+'"})-[:conoce]->(e:Doctores)-[:conoce]->(d:Doctores) WHERE d.Especialidad="'+espe+'" RETURN d'
         q2Node = gdb.query(q2, returns = (client.Node))
         
